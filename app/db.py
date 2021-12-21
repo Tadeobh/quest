@@ -24,7 +24,9 @@ def get_db():
     if db is None:
 
         db = g._database = MongoClient(
-            QUEST_DB_URI
+            QUEST_DB_URI,
+            tls=True,
+            tlsAllowInvalidCertificates=True
         )[QUEST_DB_NAME]
 
     # Return the connection to the database.
@@ -127,3 +129,28 @@ def create_question(questionnaire_id, text, type, options=None):
         return db.questions.insert_one(new_question)
     
     return {'message': "Could't find questionnaire with the given Questionnaire ID: {}.".format(questionnaire_id)}
+
+
+def create_answer(question_id, value):
+    """
+    Function to create a new answer and save it to the database.
+
+    It first checks if a question with the given 'question_id' exists.
+    If it doesn't exists, it will return an error.
+    """
+
+    # Check if the question with the given 'question_id' exists.
+    question = db.questions.find_one({'_id': ObjectId(question_id)})
+
+    if question is not None:
+
+        # Build the new answer that will be added to the database.
+        new_answer = {
+            'question_id': ObjectId(question_id),
+            'value': value
+        }
+
+        # Save the new answer in the database and return the result.
+        return db.answers.insert_one(new_answer)
+    
+    return {'message': "Could't find question with the given Question ID: {}.".format(question_id)}

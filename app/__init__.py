@@ -33,7 +33,7 @@ def create_app(settings_module):
     api.add_resource(User, '/users', endpoint='users')
     api.add_resource(Questionnaire, '/questionnaires', endpoint='questionnares')
     api.add_resource(Question, '/questions', endpoint='questions')
-    #api.add_resource(Answer, '/answers', endpoint='answer')
+    api.add_resource(Answer, '/answers', endpoint='answer')
 
     # Register the API endpoints for list of resources 
     # associated to a single parent resource

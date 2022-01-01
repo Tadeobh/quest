@@ -2,7 +2,7 @@ from flask_restx import Resource
 from flask import request, g
 
 from app.schemas.questionnaire_schema import QuestionnaireSchema
-from app.db import create_questionnaire
+from app.db import create_questionnaire, get_questionnaire
 from app.security import token_required
 
 class Questionnaire(Resource):
@@ -33,3 +33,23 @@ class Questionnaire(Resource):
                     }, 201
         else:
             return {'message': "An error happened while saving the new questionnaire in the database."}, 400
+
+    
+    @token_required
+    def get(self, questner_id):
+        # TODO Get questionnaire and check if it belongs to the user
+        # before sending it back to the them.
+
+        # Check if the questionnaire with the given ID exists.
+        questionnaire = get_questionnaire(questner_id)
+
+        if questionnaire is not None:
+            return {
+
+                '_id': str(questionnaire.get('_id')),
+                'title': questionnaire.get('title'),
+                'user_id': questionnaire.get('user_id')
+            }
+
+        else:
+            return {'message': "The Questionnaire with the given ID does not exist."}, 400

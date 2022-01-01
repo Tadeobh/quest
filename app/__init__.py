@@ -30,16 +30,12 @@ def create_app(settings_module):
 
     # Register the API endpoints for individual resources
     api.add_resource(Auth, '/auth', endpoint='auth')
-    api.add_resource(User, '/users', endpoint='users')
-    api.add_resource(Questionnaire, '/questionnaires', endpoint='questionnares')
-    api.add_resource(Question, '/questions', endpoint='questions')
-    api.add_resource(Answer, '/answers', endpoint='answer')
+    api.add_resource(User, '/users', endpoint='add_user')
+    api.add_resource(Questionnaire, '/questionnaires', endpoint='add_questionnare')
+    api.add_resource(Question, '/questions', endpoint='add_question')
+    api.add_resource(Answer, '/answers', endpoint='add_answer')
 
-    # Register the API endpoints for list of resources 
-    # associated to a single parent resource
-    #api.add_resource(UserQuestionnaires, '/users/<str:username>/questionnaires', endpoint='user_questionnaires')
-    #api.add_resource(QuestQuestions, '/questionnaires/<id:questionnaire_id>/questions', endpoint='quest_questions')
-    #api.add_resource(QuestionAnswers, '/questions/<id:question>/answers', endpoint='question_answers')
+    api.add_resource(Questionnaire, '/questionnaires/<string:questner_id>', endpoint='get_questionnaire')
 
     # Return app object with all the configuration
     return app

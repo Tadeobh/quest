@@ -101,6 +101,15 @@ def create_questionnaire(title, user_id):
     return db.questionnaires.insert_one(new_quest)
 
 
+def get_questionnaire(questner_id):
+    """
+    Function to get a Questionnaire from the database with its given ID.
+    """
+
+    # Return Questionnaire with the given Questionnaire ID (questner_id).
+    return db.questionnaires.find_one(ObjectId(questner_id))
+
+
 def create_question(questionnaire_id, text, type, options=None):
     """
     Function to create a new question and save it to the database.

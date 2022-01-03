@@ -140,6 +140,15 @@ def create_question(questionnaire_id, text, type, options=None):
     return {'message': "Could't find questionnaire with the given Questionnaire ID: {}.".format(questionnaire_id)}
 
 
+def get_answer(answer_id):
+    """
+    Function to get an Answer from the database with its given ID.
+    """
+
+    # Return Answer with the given Answer ID (answer_id).
+    return db.answers.find_one(ObjectId(answer_id))
+
+
 def create_answer(question_id, value):
     """
     Function to create a new answer and save it to the database.

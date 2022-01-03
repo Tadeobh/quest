@@ -3,7 +3,7 @@ from flask import request
 
 from app.security import token_required
 from app.schemas.question_schema import QuestionSchema
-from app.db import create_question
+from app.db import create_question, get_question
 
 class Question(Resource):
     # Create a QuestionSchema() instance to validate the info
@@ -33,3 +33,29 @@ class Question(Resource):
         
         else:
             return result, 404
+
+
+    @token_required
+    def get(self, question_id):
+        # TODO Get questionnaire and check if it belongs to the user
+        # before sending it back to the them.
+
+        # Check if the questionnaire with the given ID exists.
+        question = get_question(question_id)
+
+        if question is not None:
+            result = {
+
+                '_id': str(question.get('_id')),
+                'questionnaire_id': str(question.get('questionnaire_id')),
+                'text': question.get('text'),
+                'type': question.get('type')
+            }
+
+            if question.get('options'):
+                result['options'] = question.get('options')
+
+            return result
+
+        else:
+            return {'message': "The Questionnaire with the given ID does not exist."}, 400

@@ -2,7 +2,7 @@ from flask_restx import Resource
 from flask import request, g
 
 from app.schemas.questionnaire_schema import QuestionnaireSchema
-from app.db import create_questionnaire, get_questionnaire
+from app.db import create_questionnaire, delete_questionnaire, get_questionnaire, delete_questionnaire
 from app.security import token_required
 
 class Questionnaire(Resource):
@@ -53,3 +53,34 @@ class Questionnaire(Resource):
 
         else:
             return {'message': "The Questionnaire with the given ID does not exist."}, 400
+
+
+    @token_required
+    def delete(self, questner_id):
+        # TODO Delete questionnaire and check if it belongs to the user
+        # before deleting it.
+
+        # Check if the questionnaire with the given ID exists.
+        questionnaire = get_questionnaire(questner_id)
+
+        print(f"Current user: {g._current_user.get('username')}\nQuestionnaire's user id: {questionnaire.get('user_id')}")
+
+        # If the questionnaire exists, delete it.
+        if (questionnaire is not None) and (questionnaire.get('user_id') == g._current_user.get('username')):
+            
+            # Delete the questionnaire and get the result.
+            result = delete_questionnaire(questionnaire.get('_id'))
+
+            # If the request was acknowledged, confirm that the questionnaire was deleted.
+            # If so, inform the user.
+            if result.acknowledged is True:
+                if result.deleted_count == 1:
+                    return {'message': "Questionnaire deleted successfully.",
+                        'id': str(questionnaire.get('_id'))
+                        }, 201
+                else:
+                    return {'message': "An error occurred when trying to delete the Questionnaire."}, 500
+        else:
+            return {'message': "The Questionnaire with the given ID does not exist, or you are not authorized to delete this Questionnaire."}
+
+        return {'message': "The Questionnaire with the given ID does not exist."}, 400

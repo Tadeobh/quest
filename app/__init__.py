@@ -35,9 +35,9 @@ def create_app(settings_module):
     api.add_resource(Question, '/questions', endpoint='add_question')
     api.add_resource(Answer, '/answers', endpoint='add_answer')
 
-    api.add_resource(Questionnaire, '/questionnaires/<string:questner_id>', endpoint='get_questionnaire')
-    api.add_resource(Question, '/questions/<string:question_id>', endpoint='get_question')
-    api.add_resource(Answer, '/answers/<string:answer_id>', endpoint='get_answer')
+    api.add_resource(Questionnaire, '/questionnaires/<string:questner_id>', endpoint='questionnaire')
+    api.add_resource(Question, '/questions/<string:question_id>', endpoint='question')
+    api.add_resource(Answer, '/answers/<string:answer_id>', endpoint='answer')
 
     # Return app object with all the configuration
     return app

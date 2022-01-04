@@ -110,6 +110,14 @@ def get_questionnaire(questner_id):
     return db.questionnaires.find_one(ObjectId(questner_id))
 
 
+def delete_questionnaire(questner_id):
+    """
+    Function to delete a Questionnaire from the database with the given ID.
+    """
+    
+    # Delete the Questionnaire with the given ID and return the result.
+    return db.questionnaires.delete_one({'_id': ObjectId(questner_id) if type(questner_id) is str else questner_id})
+
 def create_question(questionnaire_id, text, type, options=None):
     """
     Function to create a new question and save it to the database.

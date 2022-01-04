@@ -81,6 +81,6 @@ class Questionnaire(Resource):
                 else:
                     return {'message': "An error occurred when trying to delete the Questionnaire."}, 500
         else:
-            return {'message': "The Questionnaire with the given ID does not exist, or you are not authorized to delete this Questionnaire."}
+            return {'message': "The Questionnaire with the given ID does not exist, or you are not authorized to delete this Questionnaire."}, 400
 
         return {'message': "The Questionnaire with the given ID does not exist."}, 400

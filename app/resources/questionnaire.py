@@ -2,7 +2,7 @@ from flask_restx import Resource
 from flask import request, g
 
 from app.schemas.questionnaire_schema import QuestionnaireSchema
-from app.db import create_questionnaire, delete_questionnaire, get_questionnaire, delete_questionnaire
+from app.db import create_questionnaire, delete_questionnaire, get_questionnaire
 from app.security import token_required
 
 class Questionnaire(Resource):

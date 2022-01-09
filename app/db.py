@@ -211,15 +211,6 @@ def delete_question(question_id):
 
 
 # ANSWER MANAGEMENT
-def get_answer(answer_id):
-    """
-    Function to get an Answer from the database with its given ID.
-    """
-
-    # Return Answer with the given Answer ID (answer_id).
-    return db.answers.find_one(ObjectId(answer_id))
-
-
 def create_answer(question_id, value):
     """
     Function to create a new answer and save it to the database.
@@ -243,3 +234,64 @@ def create_answer(question_id, value):
         return db.answers.insert_one(new_answer)
     
     return {'message': "Could't find question with the given Question ID: {}.".format(question_id)}
+
+
+def get_answer(answer_id):
+    """
+    Function to get an Answer from the database with its given ID.
+    """
+
+    # Return Answer with the given Answer ID (answer_id).
+    return db.answers.find_one(ObjectId(answer_id))
+
+
+def delete_answer(answer_id):
+    """
+    Function to delete an Answer from the database with is given ID.
+
+    It first confirms that the Answer exists and that it is linked to a Questionnaire that belongs to the user.
+    """
+
+    # Pipeline to get the information about the Questionnaire to which this Answer is linked to.
+    pipeline = [
+        {
+            '$match': {
+                '_id': ObjectId(answer_id)
+            }
+        }, {
+            '$lookup': {
+                'from': 'questions', 
+                'localField': 'question_id', 
+                'foreignField': '_id', 
+                'as': 'question'
+            }
+        }, {
+            '$lookup': {
+                'from': 'questionnaires', 
+                'localField': 'question.0.questionnaire_id', 
+                'foreignField': '_id', 
+                'as': 'questionnaire'
+            }
+        }, {
+            '$project': {
+                '_id': 0, 
+                'questionnaire': 1
+            }
+        }
+    ]
+
+    # Run the pipeline and get the result.
+    result = db.answers.aggregate(pipeline)
+
+    # Get the owner of the Questionnaire.
+    questionnaire_owner = list(result)[0].get('questionnaire')[0].get('user_id')
+
+    print(f"[Delete Answer] Questionnaire owner: {questionnaire_owner} / Current User: {g._current_user.get('username')}")
+
+    # If the current user is the owner of the Questionnaire,
+    # delete the Answer as requested.
+    # If not, return a DeleteResult object with "acknowledged" as False.
+    if questionnaire_owner == g._current_user.get("username"):
+        return db.answers.delete_one({'_id': ObjectId(answer_id)})
+    else:
+        return DeleteResult(None, False)

@@ -1,9 +1,10 @@
 from flask_restx import Resource
 from flask import request
+from marshmallow.utils import pprint
 
 from app.security import token_required
 from app.schemas.answer_schema import AnswerSchema
-from app.db import create_answer, get_answer
+from app.db import create_answer, delete_answer, get_answer, delete_answer
 
 class Answer(Resource):
     # Create a AnswerSchema() instance to validate the info
@@ -53,3 +54,20 @@ class Answer(Resource):
 
         else:
             return {'message': "The Answer with the given ID does not exist."}, 400
+    
+
+    @token_required
+    def delete(self, answer_id):
+        # TODO Delete Answer.
+
+        # Send the request to delete the Answer with the given ID.
+        result = delete_answer(answer_id)
+
+        # If the result is acknowledged and successful, return a success message.
+        # If not successful/acknowledged, return a fail message.
+        if result.acknowledged and result.deleted_count == 1:
+            return {'message': "The Answer was successfully deleted.",
+                    'id': answer_id}
+
+        else:
+            return {'message': "The Answer with the given ID could not be deleted."}

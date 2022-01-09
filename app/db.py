@@ -39,6 +39,25 @@ def get_db():
 db = LocalProxy(get_db)
 
 
+# USER MANAGEMENT
+def create_new_user(email, username, password):
+    """
+    Function to create a new user and save it to the database.
+    """
+
+    # Build the new user to be added to the databse.
+    new_user = {
+        'username': username,
+        'email': email,
+        'password': generate_password_hash(password),
+    }
+
+    print("[create_new_user] Creating new user: ", new_user)
+
+    # Save the new user in the database and return the result.
+    return db.users.insert_one(new_user)
+
+
 def get_user(email=None, username=None) -> dict:
     """
     Function to return from the database the user with the
@@ -68,24 +87,7 @@ def get_user(email=None, username=None) -> dict:
     return user
 
 
-def create_new_user(email, username, password):
-    """
-    Function to create a new user and save it to the database.
-    """
-
-    # Build the new user to be added to the databse.
-    new_user = {
-        'username': username,
-        'email': email,
-        'password': generate_password_hash(password),
-    }
-
-    print("[create_new_user] Creating new user: ", new_user)
-
-    # Save the new user in the database and return the result.
-    return db.users.insert_one(new_user)
-
-
+# QUESTIONNAIRE MANAGEMENT
 def create_questionnaire(title, user_id):
     """
     Function to create a new questionnaire and save it to the database.
@@ -120,6 +122,8 @@ def delete_questionnaire(questner_id):
     # Delete the Questionnaire with the given ID and return the result.
     return db.questionnaires.delete_one({'_id': ObjectId(questner_id) if type(questner_id) is str else questner_id})
 
+
+# QUESTION MANAGEMENT
 def create_question(questionnaire_id, text, type, options=None):
     """
     Function to create a new question and save it to the database.
@@ -206,6 +210,7 @@ def delete_question(question_id):
         return DeleteResult(None, False)
 
 
+# ANSWER MANAGEMENT
 def get_answer(answer_id):
     """
     Function to get an Answer from the database with its given ID.

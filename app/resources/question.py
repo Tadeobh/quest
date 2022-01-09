@@ -1,9 +1,10 @@
 from flask_restx import Resource
 from flask import request
+from marshmallow.utils import pprint
 
 from app.security import token_required
 from app.schemas.question_schema import QuestionSchema
-from app.db import create_question, get_question
+from app.db import create_question, delete_question, get_question
 
 class Question(Resource):
     # Create a QuestionSchema() instance to validate the info
@@ -58,4 +59,25 @@ class Question(Resource):
             return result
 
         else:
-            return {'message': "The Questionnaire with the given ID does not exist."}, 400
+            return {'message': "The Question with the given ID does not exist."}, 400
+
+        
+    @token_required
+    def delete(self, question_id):
+        # TODO Delete question.
+
+        # Send the request to delete the Question with the given ID.
+        result = delete_question(question_id)
+
+        # If the result is acknowledged and successful, return a success message.
+        # If not successful/acknowledged, return a fail message.
+        if result.acknowledged and result.deleted_count == 1:
+
+            print('Raw result:')
+            pprint(result.raw_result)
+
+            return {'message': "The Question was successfully deleted.",
+                    'id': question_id}
+
+        else:
+            return {'message': "The Question with the given ID could not be deleted."}

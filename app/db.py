@@ -1,8 +1,10 @@
 from flask import current_app, g
+from marshmallow.utils import pprint
 from werkzeug.local import LocalProxy
 from werkzeug.security import generate_password_hash
 
 from pymongo import MongoClient
+from pymongo.results import DeleteResult
 from bson.objectid import ObjectId
 
 def get_db():
@@ -155,6 +157,53 @@ def get_question(question_id):
 
     # Return Question with the given Question ID (question_id).
     return db.questions.find_one(ObjectId(question_id))
+
+
+def delete_question(question_id):
+    """
+    Function to delete a Question from the database with its given ID.
+
+    The process is:
+
+    1. Check if the Question with the given ID exists.
+    2. If it exists, it checks if the Questionnaire to which the Question is linked belongs to the current user.
+    3. If it does, it sends the command to the database to delete the Question.
+    """
+
+    # Pipeline to get the information about the Questionnaire to which this Question is linked to.
+    pipeline = [
+        {
+            '$match': {
+                '_id': ObjectId(question_id)
+            }
+        }, {
+            '$lookup': {
+                'from': 'questionnaires', 
+                'localField': 'questionnaire_id', 
+                'foreignField': '_id', 
+                'as': 'questionnaire'
+            }
+        }, {
+            '$project': {
+                '_id': 0, 
+                'questionnaire': 1
+            }
+        }
+    ]
+
+    # Run the pipeline and get the result.
+    result = db.questions.aggregate(pipeline)
+
+    # Get the owner of the Questionnaire.
+    questionnaire_owner = list(result)[0].get('questionnaire')[0].get('user_id')
+
+    # If the current user is the owner of the Questionnaire,
+    # delete the Question as requested.
+    # If not, return a DeleteResult object with "acknowledged" as False.
+    if questionnaire_owner == g._current_user.get("username"):
+        return db.questions.delete_one({'_id': ObjectId(question_id)})
+    else:
+        return DeleteResult(None, False)
 
 
 def get_answer(answer_id):

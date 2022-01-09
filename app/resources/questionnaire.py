@@ -65,7 +65,7 @@ class Questionnaire(Resource):
 
         print(f"Current user: {g._current_user.get('username')}\nQuestionnaire's user id: {questionnaire.get('user_id')}")
 
-        # If the questionnaire exists, delete it.
+        # If the questionnaire exists, and if it belongs to the current user, delete it.
         if (questionnaire is not None) and (questionnaire.get('user_id') == g._current_user.get('username')):
             
             # Delete the questionnaire and get the result.

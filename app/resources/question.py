@@ -1,10 +1,12 @@
 from flask_restx import Resource
 from flask import request
 from marshmallow.utils import pprint
+import json
 
 from app.security import token_required
 from app.schemas.question_schema import QuestionSchema
 from app.db import create_question, delete_question, get_question
+from app.common.util import CustomEncoder
 
 class Question(Resource):
     # Create a QuestionSchema() instance to validate the info
@@ -45,18 +47,7 @@ class Question(Resource):
         question = get_question(question_id)
 
         if question is not None:
-            result = {
-
-                '_id': str(question.get('_id')),
-                'questionnaire_id': str(question.get('questionnaire_id')),
-                'text': question.get('text'),
-                'type': question.get('type')
-            }
-
-            if question.get('options'):
-                result['options'] = question.get('options')
-
-            return result
+            return json.loads(CustomEncoder().encode(question))
 
         else:
             return {'message': "The Question with the given ID does not exist."}, 400

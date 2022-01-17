@@ -1,5 +1,6 @@
 from flask import current_app, g
 from marshmallow.utils import pprint
+from marshmallow.validate import Length
 from werkzeug.local import LocalProxy
 from werkzeug.security import generate_password_hash
 
@@ -110,17 +111,73 @@ def get_questionnaire(questner_id):
     Function to get a Questionnaire from the database with its given ID.
     """
 
-    # Return Questionnaire with the given Questionnaire ID (questner_id).
-    return db.questionnaires.find_one(ObjectId(questner_id))
+    # Pipeline used to get the information about the Questionnaire and the elements
+    # linked to it.
+    pipeline = [
+        {
+            '$match': {
+                '_id': ObjectId(questner_id)
+            }
+        }, {
+            '$lookup': {
+                'from': 'questions', 
+                'let': {
+                    'questner_id': '$_id'
+                }, 
+                'pipeline': [
+                    {
+                        '$match': {
+                            '$expr': {
+                                '$eq': [
+                                    '$questionnaire_id', '$$questner_id'
+                                ]
+                            }
+                        }
+                    }, {
+                        '$lookup': {
+                            'from': 'answers', 
+                            'let': {
+                                'quest_id': '$_id'
+                            }, 
+                            'pipeline': [
+                                {
+                                    '$match': {
+                                        '$expr': {
+                                            '$eq': [
+                                                '$question_id', '$$quest_id'
+                                            ]
+                                        }
+                                    }
+                                }
+                            ], 
+                            'as': 'answers'
+                        }
+                    }
+                ], 
+                'as': 'questions'
+            }
+        }
+    ]
+
+    # Process the pipeline
+    questionnaire = list(db.questionnaires.aggregate(pipeline))
+
+    # If we have a result, return it.
+    # If not, return None.
+    if len(questionnaire) > 0:
+        return questionnaire[0]
+    return None
 
 
 def delete_questionnaire(questner_id):
     """
     Function to delete a Questionnaire from the database with the given ID.
+
+    It first confirms that the Questionnaire with the given ID exists, and that
+    the user sending the request is the owner of the Questionnaire.
+
+    Then, it delets the Questionnaire and the Questions and Answers linked to it.
     """
-    
-    # Delete the Questionnaire with the given ID and return the result.
-    return db.questionnaires.delete_one({'_id': ObjectId(questner_id) if type(questner_id) is str else questner_id})
 
 
 # QUESTION MANAGEMENT
@@ -159,8 +216,31 @@ def get_question(question_id):
     Function to get a Question from the database with its given ID.
     """
 
-    # Return Question with the given Question ID (question_id).
-    return db.questions.find_one(ObjectId(question_id))
+    # Pipeline used to get the information about the Question and the answers
+    # linked to it.
+    pipeline = [
+        {
+            '$match': {
+                '_id': ObjectId('61b9584a4dbee41f9fc90e1f')
+            }
+        }, {
+            '$lookup': {
+                'from': 'answers', 
+                'localField': '_id', 
+                'foreignField': 'question_id', 
+                'as': 'answers'
+            }
+        }
+    ]
+
+    # Process the pipeline and get the result
+    question = list(db.questions.aggregate(pipeline))
+
+    # If we have a result, return it.
+    # If not, return None.
+    if len(question) > 0:
+        return question[0]
+    return None
 
 
 def delete_question(question_id):

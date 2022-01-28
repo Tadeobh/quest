@@ -1,12 +1,17 @@
 from flask import current_app, g
-from marshmallow.utils import pprint
-from marshmallow.validate import Length
+from pymongo.read_preferences import ReadPreference
 from werkzeug.local import LocalProxy
 from werkzeug.security import generate_password_hash
 
 from pymongo import MongoClient
+from pymongo.read_concern import ReadConcern
+from pymongo.write_concern import WriteConcern
 from pymongo.results import DeleteResult
 from bson.objectid import ObjectId
+import config
+
+from config.dev import QUEST_DB_NAME
+
 
 def get_db():
     """
@@ -17,9 +22,11 @@ def get_db():
     # retrieve that from the global variable "g".
     db = getattr(g, "_database", None)
 
-    # Get the configuration parameters for the database from the
-    # config object.
+    # Get the database URI from the config object.
     QUEST_DB_URI = current_app.config["QUEST_DB_URI"]
+
+    # Get the database name from the config object.
+    global QUEST_DB_NAME
     QUEST_DB_NAME = current_app.config["QUEST_DB_NAME"]
 
     # If there's not an existing connection to the database,
@@ -30,7 +37,7 @@ def get_db():
             QUEST_DB_URI,
             tls=True,
             tlsAllowInvalidCertificates=True
-        )[QUEST_DB_NAME]
+        )
 
     # Return the connection to the database.
     return db
@@ -56,7 +63,7 @@ def create_new_user(email, username, password):
     print("[create_new_user] Creating new user: ", new_user)
 
     # Save the new user in the database and return the result.
-    return db.users.insert_one(new_user)
+    return db[QUEST_DB_NAME].users.insert_one(new_user)
 
 
 def get_user(email=None, username=None) -> dict:
@@ -80,7 +87,7 @@ def get_user(email=None, username=None) -> dict:
     print("[get_user] Searching for: ", query)
 
     # Look for the user with the given email and/or username.
-    user = db.users.find_one(query)
+    user = db[QUEST_DB_NAME].users.find_one(query)
 
     print("[get_user] User found: ", user)
 
@@ -103,7 +110,7 @@ def create_questionnaire(title, user_id):
     print(f'[Create_Quest] Questionnaire to create: title={title}, user_id={user_id}')
 
     # Save the new questionnaire in the database and return the result.
-    return db.questionnaires.insert_one(new_quest)
+    return db[QUEST_DB_NAME].questionnaires.insert_one(new_quest)
 
 
 def get_questionnaire(questner_id):
@@ -160,7 +167,7 @@ def get_questionnaire(questner_id):
     ]
 
     # Process the pipeline
-    questionnaire = list(db.questionnaires.aggregate(pipeline))
+    questionnaire = list(db[QUEST_DB_NAME].questionnaires.aggregate(pipeline))
 
     # If we have a result, return it.
     # If not, return None.
@@ -179,6 +186,109 @@ def delete_questionnaire(questner_id):
     Then, it delets the Questionnaire and the Questions and Answers linked to it.
     """
 
+    # Pipeline to get the information from the Questionnaire that will be deleted,
+    # including the IDs from the Questions and Answers linked to it.
+    pipeline = [
+        {
+            '$match': {
+                '_id': ObjectId(questner_id)
+            }
+        }, {
+            '$lookup': {
+                'from': 'questions', 
+                'let': {
+                    'questner_id': '$_id'
+                }, 
+                'pipeline': [
+                    {
+                        '$match': {
+                            '$expr': {
+                                '$eq': [
+                                    '$questionnaire_id', '$$questner_id'
+                                ]
+                            }
+                        }
+                    }, {
+                        '$lookup': {
+                            'from': 'answers', 
+                            'let': {
+                                'quest_id': '$_id'
+                            }, 
+                            'pipeline': [
+                                {
+                                    '$match': {
+                                        '$expr': {
+                                            '$eq': [
+                                                '$question_id', '$$quest_id'
+                                            ]
+                                        }
+                                    }
+                                }, {
+                                    '$project': {
+                                        '_id': 1
+                                    }
+                                }
+                            ], 
+                            'as': 'answers'
+                        }
+                    }, {
+                        '$project': {
+                            'answers': 1
+                        }
+                    }
+                ], 
+                'as': 'questions'
+            }
+        }
+    ]
+
+    # Process the pipeline and get the result with the information requested.
+    questionnaire = list(db[QUEST_DB_NAME].questionnaires.aggregate(pipeline))[0]
+
+    # Confirm that the requester is the owner of the Questionnaire.
+    # If not, return None.
+    if questionnaire.get('user_id', None) == g._current_user.get('username'):
+
+        # Intialize the variables that will be used to store the elements
+        # linked to the Questionnaire.
+        questions = list()
+        answers = list()
+
+        # Get the list of Questions and Answers linked to the Questionnaire and store their IDs.
+        for question in questionnaire.get('questions'):
+            question_id = question.get('_id', None)
+            if question_id is not None:
+                questions.append(question_id)
+                answers.extend([answer.get('_id') for answer in question.get('answers') if answer is not None])
+        
+
+        # Callback function to execute the operations that will delete the elements.
+        def callback(session):
+
+            # Retrieve the collections that will be modified, through the given session.
+            questner_coll = session.client.test_quest.questionnaires
+            quest_coll = session.client.test_quest.questions
+            answer_coll = session.client.test_quest.answers
+
+            # Delete operations
+            answer_coll.delete_many({'_id': {'$in': answers}}, session=session)
+            quest_coll.delete_many({'_id': {'$in': questions}}, session=session)
+            print('Questner ID: ', questner_id)
+            questner_coll.delete_one({'_id': ObjectId(questner_id)}, session=session)
+
+        # Start a client session and execute the operations
+        with db.start_session() as session:
+            session.with_transaction(
+                callback,
+                read_concern=ReadConcern('snapshot'),
+                write_concern=WriteConcern("majority", wtimeout=1000),
+                read_preference=ReadPreference.PRIMARY
+            )
+        
+        return {'message': 'Questionnaire deleted!'}
+
+    else:
+        return None
 
 # QUESTION MANAGEMENT
 def create_question(questionnaire_id, text, type, options=None):
@@ -190,7 +300,7 @@ def create_question(questionnaire_id, text, type, options=None):
     """
 
     # Check if the questionnaire with the given 'questionnaire_id' exists.
-    questionnaire = db.questionnaires.find_one({'_id': ObjectId(questionnaire_id)})
+    questionnaire = db[QUEST_DB_NAME].questionnaires.find_one({'_id': ObjectId(questionnaire_id)})
 
     if questionnaire is not None:
 
@@ -206,7 +316,7 @@ def create_question(questionnaire_id, text, type, options=None):
             new_question['options'] = options
 
         # Save the new question in the database and return the result.
-        return db.questions.insert_one(new_question)
+        return db[QUEST_DB_NAME].questions.insert_one(new_question)
     
     return {'message': "Could't find questionnaire with the given Questionnaire ID: {}.".format(questionnaire_id)}
 
@@ -234,7 +344,7 @@ def get_question(question_id):
     ]
 
     # Process the pipeline and get the result
-    question = list(db.questions.aggregate(pipeline))
+    question = list(db[QUEST_DB_NAME].questions.aggregate(pipeline))
 
     # If we have a result, return it.
     # If not, return None.
@@ -276,7 +386,7 @@ def delete_question(question_id):
     ]
 
     # Run the pipeline and get the result.
-    result = db.questions.aggregate(pipeline)
+    result = db[QUEST_DB_NAME].questions.aggregate(pipeline)
 
     # Get the owner of the Questionnaire.
     questionnaire_owner = list(result)[0].get('questionnaire')[0].get('user_id')
@@ -285,7 +395,7 @@ def delete_question(question_id):
     # delete the Question as requested.
     # If not, return a DeleteResult object with "acknowledged" as False.
     if questionnaire_owner == g._current_user.get("username"):
-        return db.questions.delete_one({'_id': ObjectId(question_id)})
+        return db[QUEST_DB_NAME].questions.delete_one({'_id': ObjectId(question_id)})
     else:
         return DeleteResult(None, False)
 
@@ -300,7 +410,7 @@ def create_answer(question_id, value):
     """
 
     # Check if the question with the given 'question_id' exists.
-    question = db.questions.find_one({'_id': ObjectId(question_id)})
+    question = db[QUEST_DB_NAME].questions.find_one({'_id': ObjectId(question_id)})
 
     if question is not None:
 
@@ -311,7 +421,7 @@ def create_answer(question_id, value):
         }
 
         # Save the new answer in the database and return the result.
-        return db.answers.insert_one(new_answer)
+        return db[QUEST_DB_NAME].answers.insert_one(new_answer)
     
     return {'message': "Could't find question with the given Question ID: {}.".format(question_id)}
 
@@ -322,7 +432,7 @@ def get_answer(answer_id):
     """
 
     # Return Answer with the given Answer ID (answer_id).
-    return db.answers.find_one(ObjectId(answer_id))
+    return db[QUEST_DB_NAME].answers.find_one(ObjectId(answer_id))
 
 
 def delete_answer(answer_id):
@@ -361,7 +471,7 @@ def delete_answer(answer_id):
     ]
 
     # Run the pipeline and get the result.
-    result = db.answers.aggregate(pipeline)
+    result = db[QUEST_DB_NAME].answers.aggregate(pipeline)
 
     # Get the owner of the Questionnaire.
     questionnaire_owner = list(result)[0].get('questionnaire')[0].get('user_id')
@@ -372,6 +482,6 @@ def delete_answer(answer_id):
     # delete the Answer as requested.
     # If not, return a DeleteResult object with "acknowledged" as False.
     if questionnaire_owner == g._current_user.get("username"):
-        return db.answers.delete_one({'_id': ObjectId(answer_id)})
+        return db[QUEST_DB_NAME].answers.delete_one({'_id': ObjectId(answer_id)})
     else:
         return DeleteResult(None, False)

@@ -61,4 +61,5 @@ class Questionnaire(Resource):
             # Delete the questionnaire and get the result.
             result = delete_questionnaire(questner_id)
 
-            return json.loads(CustomEncoder().encode(result))
+            #return json.loads(CustomEncoder().encode(result))
+            return result

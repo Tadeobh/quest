@@ -332,7 +332,7 @@ def get_question(question_id):
     pipeline = [
         {
             '$match': {
-                '_id': ObjectId('61b9584a4dbee41f9fc90e1f')
+                '_id': ObjectId(question_id)
             }
         }, {
             '$lookup': {

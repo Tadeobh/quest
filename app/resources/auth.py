@@ -20,8 +20,6 @@ class Auth(Resource):
         # Validate the information
         data = Auth.login_schema.load(json_data)
 
-        print('[Auth] Data: ', data)
-
         # Get the user with the given username and/or email.
         user = get_user(email=data.get('email', None), username=data.get('username', None))
 

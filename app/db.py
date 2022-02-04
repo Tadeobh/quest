@@ -108,8 +108,6 @@ def create_questionnaire(title, user_id):
         'user_id': user_id,
     }
 
-    print(f'[Create_Quest] Questionnaire to create: title={title}, user_id={user_id}')
-
     # Save the new questionnaire in the database and return the result.
     return db[g._db_name].questionnaires.insert_one(new_quest)
 

@@ -50,16 +50,18 @@ class Questionnaire(Resource):
             return json.loads(CustomEncoder().encode(questionnaire))
 
         else:
-            return {'message': "The Questionnaire with the given ID does not exist."}, 400
+            return {'message': "The Questionnaire with the given ID could not be found."}, 400
 
 
     @token_required
     def delete(self, questner_id):
-        # TODO Delete questionnaire and check if it belongs to the user
-        # before deleting it.
+        """
+        Delete questionnaire and check if it belongs to the user
+        before deleting it.
+        """
             
-            # Delete the questionnaire and get the result.
-            result = delete_questionnaire(questner_id)
+        # Delete the questionnaire and get the result.
+        result = delete_questionnaire(questner_id)
 
-            #return json.loads(CustomEncoder().encode(result))
-            return result
+        #return json.loads(CustomEncoder().encode(result))
+        return result

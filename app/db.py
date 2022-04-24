@@ -111,6 +111,68 @@ def create_questionnaire(title, user_id):
     # Save the new questionnaire in the database and return the result.
     return db[g._db_name].questionnaires.insert_one(new_quest)
 
+def get_questionnaires():
+    """
+    Function to get all the Questionnaires from the database that belong to
+    the user that's sending the request.
+    """
+
+    # Pipeline used to get the information about the Questionnaire and the elements
+    # linked to it.
+    pipeline = [
+        {
+            '$match': {
+                'user_id': g._current_user.get('username')
+            }
+        }, {
+            '$lookup': {
+                'from': 'questions', 
+                'let': {
+                    'questner_id': '$_id'
+                }, 
+                'pipeline': [
+                    {
+                        '$match': {
+                            '$expr': {
+                                '$eq': [
+                                    '$questionnaire_id', '$$questner_id'
+                                ]
+                            }
+                        }
+                    }, {
+                        '$lookup': {
+                            'from': 'answers', 
+                            'let': {
+                                'quest_id': '$_id'
+                            }, 
+                            'pipeline': [
+                                {
+                                    '$match': {
+                                        '$expr': {
+                                            '$eq': [
+                                                '$question_id', '$$quest_id'
+                                            ]
+                                        }
+                                    }
+                                }
+                            ], 
+                            'as': 'answers'
+                        }
+                    }
+                ], 
+                'as': 'questions'
+            }
+        }
+    ]
+
+    # Process the pipeline
+    questionnaires = list(db[g._db_name].questionnaires.aggregate(pipeline))
+
+    # If we have a result, return it.
+    # If not, return None.
+    if len(questionnaires) > 0:
+        return questionnaires
+    return None
 
 def get_questionnaire(questner_id):
     """

@@ -3,7 +3,7 @@ from flask_restx import Resource
 from flask import request, g
 
 from app.schemas.questionnaire_schema import QuestionnaireSchema
-from app.db import create_questionnaire, delete_questionnaire, get_questionnaire
+from app.db import create_questionnaire, delete_questionnaire, get_questionnaire, get_questionnaires
 from app.security import token_required
 
 from app.common.util import CustomEncoder
@@ -52,6 +52,22 @@ class Questionnaire(Resource):
         else:
             return {'message': "The Questionnaire with the given ID could not be found."}, 400
 
+    @token_required
+    def get(self):
+        # Get all the questionnaires that belong to the user sending 
+        # the request.
+
+        # Get the questionnares from the database that belong to the
+        # user sending the request.
+        questionnaires = get_questionnaires()
+
+        # If any, return the list of Questionnaires found.
+        if questionnaires is not None:
+            return json.loads(CustomEncoder().encode(questionnaires))
+
+        # If none, let the user know.
+        return {'message': "There aren't any Questionnaires available from this user."}
+
 
     @token_required
     def delete(self, questner_id):
@@ -63,5 +79,5 @@ class Questionnaire(Resource):
         # Delete the questionnaire and get the result.
         result = delete_questionnaire(questner_id)
 
-        #return json.loads(CustomEncoder().encode(result))
+        # return json.loads(CustomEncoder().encode(result))
         return result

@@ -28,13 +28,17 @@ def create_app(settings_module):
     # Initialize the Api object with the app environment
     api = Api(app)
 
-    # Register the API endpoints for individual resources
+    # Register the API endpoints for individual resources.
+    # Authentication resource
     api.add_resource(Auth, '/auth', endpoint='auth')
+
+    # Endpoints to "add" resources.
     api.add_resource(User, '/users', endpoint='add_user')
     api.add_resource(Questionnaire, '/questionnaires', endpoint='add_questionnare')
     api.add_resource(Question, '/questions', endpoint='add_question')
     api.add_resource(Answer, '/answers', endpoint='add_answer')
 
+    # Endpoints to get and delete resources.
     api.add_resource(Questionnaire, '/questionnaires/<string:questner_id>', endpoint='questionnaire')
     api.add_resource(Question, '/questions/<string:question_id>', endpoint='question')
     api.add_resource(Answer, '/answers/<string:answer_id>', endpoint='answer')

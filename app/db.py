@@ -95,6 +95,20 @@ def get_user(email=None, username=None) -> dict:
     # Return the user that was found.
     return user
 
+def user_exists(username=None, email=None) -> bool:
+    """
+    Function to return true or false if the user already exists
+    with the given 'email' or 'username'.
+
+    If both parameters are given, the function will return true
+    if there is a user that matches both, username and email.
+    """
+
+    # Search for the user with the given parameters.
+    user = get_user(username=username, email=email)
+
+    # Return true if there is a user. Return false if there isn't one.
+    return True if user else False
 
 # QUESTIONNAIRE MANAGEMENT
 def create_questionnaire(title, user_id):

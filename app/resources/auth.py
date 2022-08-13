@@ -9,6 +9,7 @@ from app.db import get_user
 from app.schemas.user_schema import LogUserSchema
 
 class Auth(Resource):
+
     # Create an instance of UserSchema() to validate the info
     login_schema = LogUserSchema()
 
@@ -22,6 +23,10 @@ class Auth(Resource):
 
         # Get the user with the given username and/or email.
         user = get_user(email=data.get('email', None), username=data.get('username', None))
+
+        # Return an error message if the user could not be authenticated.
+        if user is None:
+            return {'message': 'Wrong user and/or password.'}, 401
 
          # If the given password matches the given user's password,
          # send back the JWToken.
@@ -39,7 +44,11 @@ class Auth(Resource):
             )
 
             # Return the token to the user.
-            return {'access_token': token}
+            return {
+                'user_id': str(user.get('_id')),
+                'accessToken': token
+                }
         
-        # Return an error message if the user could not be authenticated.
-        return {'message': 'Could not verify user.'}, 404
+        else:
+            # Return an error message if the user could not be authenticated.
+            return {'message': 'Wrong user and/or password.'}, 401

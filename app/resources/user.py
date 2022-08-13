@@ -1,7 +1,7 @@
 from flask_restx import Resource
 from flask import request
 
-from app.db import create_new_user, get_user
+from app.db import create_new_user, user_exists
 from app.schemas.user_schema import RegisterUserSchema
 
 class User(Resource):
@@ -16,12 +16,15 @@ class User(Resource):
         # Validate the information
         data = User.register_schema.load(request_data)
 
-        # Check in the database if the user already exists
-        user = get_user(email=data['email'], username=data['username'])
+        # Check if the username or email are already in use.
+        email_exists = user_exists(email=data['email'])
+        username_exists = user_exists(username=data['username'])
         
         # If the user with the given username or email already exists, return a 409 error
-        if user:
-            return {'message': "User '{}' already exists.".format(data['username'])}, 409
+        if username_exists:
+            return {'message': "Username '{}' already exists.".format(data['username'])}, 409
+        elif email_exists:
+            return {'message': "Email '{}' is already taken. Please try with a different email.".format(data['email'])}, 409
         
         # If the user doesn't exist, create it and save it to the database
         result = create_new_user(**data)

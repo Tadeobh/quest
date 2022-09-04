@@ -1,3 +1,6 @@
+from operator import truediv
+from turtle import update
+from click import command
 from flask import current_app, g
 from pymongo.read_preferences import ReadPreference
 from werkzeug.local import LocalProxy
@@ -41,7 +44,9 @@ def get_db():
 
 
 def get_db_name():
-    
+    """
+    Configuration method to retrieve the database name to be used
+    """
     return current_app.config["QUEST_DB_NAME"]
 
 # Use LocalProxy to get the global db instance with just 'db'.
@@ -72,10 +77,10 @@ def create_new_user(email, username, password):
 def get_user(email=None, username=None) -> dict:
     """
     Function to return from the database the user with the
-    given 'email' or 'username'.
+    given 'email', and/or 'username'.
 
-    If both parameters are given, the function will look for
-    a user that 'matches' both email and 'username' args.
+    The function will look for a user that matches all the given
+    arguments.
     """
 
     # Build the query 'query' to be sent to the database.
@@ -83,17 +88,93 @@ def get_user(email=None, username=None) -> dict:
     '$and': 
         [
             {'email': email if email is not None else {'$exists': True}},
-            {'username': username if username is not None else {'$exists': True}}
+            {'username': username if username is not None else {'$exists': True}},
         ]
     }
 
     QUEST_DB_NAME = str(db_name)
 
-    # Look for the user with the given email and/or username.
+    # Look for the user with the given 'email' and/or 'username'.
     user = db[QUEST_DB_NAME].users.find_one(query)
 
     # Return the user that was found.
     return user
+
+
+def get_user_with_rt(refresh_token=None):
+    """
+    Function to get the user to which the given 'refresh_token' belongs.
+    """
+
+    # Build the query 'query' to be sent to the database.
+    query = {
+        'refresh_tokens': {
+            '$in': [refresh_token]
+        }
+    }
+
+    QUEST_DB_NAME = str(db_name)
+
+    # Look for the user with the given 'refresh_token'.
+    user = db[QUEST_DB_NAME].users.find_one(query)
+
+    # Return the user that was found.
+    return user  
+
+
+def sign_out_all(username=None):
+    """
+    Function to remove all the Refresh Tokens from a user, which
+    will cause the user to log out from all their sessions.
+    """
+
+    # Check if the username was provided before moving forward
+    if username is not None:
+
+        # Filter to find the user that will get all their Refresh Tokens
+        # removed.
+        update_filter = {
+            'username': username
+        }
+
+        # Instruction to clear the user's Refresh Tokens
+        updated_value = {
+            '$set': {'refresh_tokens': []} 
+        }
+
+        # Send the command to the database and get the result
+        result = db[g._db_name].users.update_one(update_filter, updated_value)
+
+        # If the command was acknowledged by the database, return the result
+        return result if result.acknowledged else None
+
+
+def sign_out_session(username=None, session=None):
+    """
+    Function to sign out the user from a specific session.
+    """
+
+    # Confirm the requested parameters were given
+    if (username is not None) and (session is not None):
+        # Filter to find the given user
+        update_filter = {
+            'username': username
+        }
+
+        # Command to remove the session
+        updated_value = {
+            '$pull': {'refresh_tokens': session}
+        }
+
+        # Send the command to the database and get the result
+        result = db[g._db_name].users.update_one(update_filter, updated_value)
+
+        # If the command was acknowledged by the database, return the result
+        return result if result.acknowledged else None
+    
+    # If no username provided, return None
+    return None
+
 
 def user_exists(username=None, email=None) -> bool:
     """
@@ -110,6 +191,54 @@ def user_exists(username=None, email=None) -> bool:
     # Return true if there is a user. Return false if there isn't one.
     return True if user else False
 
+
+def add_session(username=None, refresh_token=None):
+    """
+    Function to add a Refresh Token to the users database,
+    which would be linked to a username
+    """
+
+    # Filter to find the user that will get the Refresh Token
+    update_filter = {
+        'username': username
+    }
+
+    # Instruction to add the Refresh Token to the user's 
+    # refresh_tokens array
+    updated_value = {
+        '$push' : {
+            'refresh_tokens': refresh_token
+        }
+    }
+
+    # Send the command to the database and get the result
+    result = db[g._db_name].users.update_one(update_filter, updated_value)
+
+    # If the command was acknowledged by the database, return the result
+    return result if result.acknowledged else None
+
+
+    """
+    Function to get all the active sessions from the given user.
+    """
+
+    # Query that will be sent to find the user
+    query = {
+        'username': username
+    }
+
+    # Filter to only return the refresh_tokens field from the database
+    projection = {
+        '_id': False,
+        'refresh_tokens': True
+    }
+
+    # Search for the Refresh Tokens from the given user
+    sessions = db[g._db_name].users.find_one(query, projection)
+
+    return sessions
+
+
 # QUESTIONNAIRE MANAGEMENT
 def create_questionnaire(title, user_id):
     """
@@ -124,6 +253,7 @@ def create_questionnaire(title, user_id):
 
     # Save the new questionnaire in the database and return the result.
     return db[g._db_name].questionnaires.insert_one(new_quest)
+
 
 def get_questionnaires():
     """
@@ -187,6 +317,7 @@ def get_questionnaires():
     if len(questionnaires) > 0:
         return questionnaires
     return None
+
 
 def get_questionnaire(questner_id):
     """
@@ -364,6 +495,7 @@ def delete_questionnaire(questner_id):
 
     else:
         return None
+
 
 # QUESTION MANAGEMENT
 def create_question(questionnaire_id, text, type, options=None):

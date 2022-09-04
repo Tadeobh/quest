@@ -8,6 +8,9 @@ BASE_DIR = dirname(dirname(abspath(__file__)))
 # Secret Key
 SECRET_KEY = getenv("SECRET_KEY")
 
+# Refresh Token Key
+REFRESH_TOKEN_KEY = getenv("REFRESH_TOKEN_KEY")
+
 # App environments
 APP_ENV_LOCAL = 'local'
 APP_ENV_TESTING = 'testing'

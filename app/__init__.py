@@ -1,7 +1,10 @@
+from turtle import end_poly
 from flask import Flask
 from flask_restx import Api
 
 from app.resources.auth import Auth
+from app.resources.logout import Logout
+from app.resources.refresh import Refresh
 from app.resources.user import User
 from app.resources.questionnaire import Questionnaire
 from app.resources.question import Question
@@ -31,6 +34,12 @@ def create_app(settings_module):
     # Register the API endpoints for individual resources.
     # Authentication resource
     api.add_resource(Auth, '/auth', endpoint='auth')
+
+    # Logout resource to delete the user's session
+    api.add_resource(Logout, '/logout', endpoint='logout')
+
+    # Endpoint to refresh the Access Token
+    api.add_resource(Refresh, '/refresh', endpoint='refresh')
 
     # Endpoints to "add" resources.
     api.add_resource(User, '/users', endpoint='add_user')

@@ -25,7 +25,7 @@ def token_required(f):
 
         # If the token does not have a value, return an error.
         if not token:
-            return {'message': 'a valid token is missing'}, 404
+            return {'message': 'a valid token is missing'}, 401
 
         try:
             # Decode the token using the applications Secret Key.
@@ -36,7 +36,7 @@ def token_required(f):
 
         except Exception as e:
             # Return an error message if the token is invalid.
-            return {'message': 'invalid token', 'token': token}, 404
+            return {'message': 'invalid token', 'token': token}, 403
 
         return f(*args, **kwargs)
     
